@@ -1,0 +1,65 @@
+version: "3"
+services:
+  # Deploy visualizer contener
+  visualizer:
+    image: dockersamples/visualizer
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 1024M
+      placement:
+        constraints: [node.role == manager]
+    ports:
+      - "5050:8080"
+    networks:
+      - traefik-network
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+
+  # Deploy traefik loadbalancer
+  traefik:
+    image: traefik
+    command:
+      - "--api"
+      - "--docker"
+      - "--docker.swarmMode"
+      - "--docker.domain=mylittleponey.com"
+      - "--docker.watch"
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 1024M
+    ports:
+      - "80:80"
+      - "8080:8080"
+    networks:
+      - traefik-network
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+
+  # Deploy httpd container
+  httpd:
+    image: httpd
+    deploy:
+      replicas: 5
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 1024M
+      labels:
+        traefik.port: "80"
+    networks:
+      - traefik-network
+
+networks:
+  traefik-network:
